@@ -54,18 +54,18 @@
     <div class="container mt-4">
         <h2 class="mb-3">Értesittések: Nem Látott Kocsik</h2>
         <div class="unviewed-images">
-            {% for image in images if not image.viewed %}
+            {% for image in unviewed_images %}
                 <div class="image-card">
                     <img src="{{ url_for('uploaded_file', filename=image.detected_image_path) }}" alt="Detected image">
                     <p>{{ image.description }} - {{ image.car_count }} autók detektálva</p>
-                    <button onclick="markViewed({{ image.id }});">Megtekintes</button>
+                    <button onclick="markViewed('{{ image.id }}');">Megtekintes</button>
                 </div>
             {% endfor %}
         </div>
 
         <h2 class="mb-3 mt-4">Megtekintett Kocsik</h2>
         <div class="viewed-images">
-            {% for image in images if image.viewed %}
+            {% for image in viewed_images %}
                 <div class="image-card">
                     <img src="{{ url_for('uploaded_file', filename=image.detected_image_path) }}" alt="Detected image">
                     <p>Leírás: {{ image.description }} <br> Autók detektálva: {{ image.car_count }}</p>

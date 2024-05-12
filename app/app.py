@@ -34,18 +34,39 @@ celery = make_celery(app)
 db = SQLAlchemy(app)
 model = YOLO("yolov8x-worldv2.pt")
 
-
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import relationship
+    
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
+    viewed_images = db.relationship('ImageEntry', secondary='viewed_entries', back_populates='viewers')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+class ImageEntry(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    original_image_path = db.Column(db.String(100), nullable=False)
+    detected_image_path = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(300), nullable=False)
+    car_count = db.Column(db.Integer, nullable=False, default=0)
+    viewers = db.relationship('User', secondary='viewed_entries', back_populates='viewed_images')
+
+class ViewedEntry(db.Model):
+    __tablename__ = 'viewed_entries'
+    user_id = db.Column(db.Integer, ForeignKey('user.id'), primary_key=True)
+    image_id = db.Column(db.Integer, ForeignKey('image_entry.id'), primary_key=True)
+    viewed = db.Column(db.Boolean, default=True)
+
+    user = db.relationship('User', backref=db.backref('viewed_entry_links', lazy='dynamic'))
+    image = db.relationship('ImageEntry', backref=db.backref('viewed_entry_links', lazy='dynamic'))
 
 
 login_manager = LoginManager(app)
@@ -113,9 +134,11 @@ def logout():
 def admin_dashboard():
     if not current_user.is_admin:
         return 'Access denied', 403
-    images = ImageEntry.query.all()
-    return render_template('admin_dashboard.html', images=images)
+    
+    unviewed_images = ImageEntry.query.filter(~ImageEntry.viewers.any(User.id == current_user.id)).all()
+    viewed_images = current_user.viewed_images  # Már megtekintett képek lekérése
 
+    return render_template('admin_dashboard.html', unviewed_images=unviewed_images, viewed_images=viewed_images)
 
 # Ensure the upload and detection folders exist
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -124,13 +147,6 @@ if not os.path.exists(app.config['DETECTION_FOLDER']):
     os.makedirs(app.config['DETECTION_FOLDER'])
 
 
-class ImageEntry(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    original_image_path = db.Column(db.String(100), nullable=False)
-    detected_image_path = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.String(300), nullable=False)
-    car_count = db.Column(db.Integer, nullable=False, default=0)
-    viewed = db.Column(db.Boolean, default=False)  # Új mező a megtekintés állapotának nyomon követésére
 
 
 with app.app_context():
@@ -171,8 +187,8 @@ def mark_viewed(image_id):
         return jsonify({'success': False, 'message': 'Access denied'}), 403
     
     image = ImageEntry.query.get(image_id)
-    if image:
-        image.viewed = True
+    if image not in current_user.viewed_images:
+        current_user.viewed_images.append(image)
         db.session.commit()
         return jsonify({'success': True, 'message': 'Image marked as viewed'})
     return jsonify({'success': False, 'message': 'Image not found'}), 404
