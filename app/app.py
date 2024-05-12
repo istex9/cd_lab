@@ -46,7 +46,8 @@ class User(db.Model, UserMixin):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-    
+
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -76,7 +77,7 @@ def register():
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
-        
+
         return redirect(url_for('login'))
     return render_template('register.html')
 
@@ -114,6 +115,7 @@ def admin_dashboard():
         return 'Access denied', 403
     images = ImageEntry.query.all()
     return render_template('admin_dashboard.html', images=images)
+
 
 # Ensure the upload and detection folders exist
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -154,7 +156,8 @@ def upload():
             detected_path = os.path.join(app.config['DETECTION_FOLDER'], filename)
             image.save(original_path)
             car_count = detect_cars(original_path, detected_path)
-            entry = ImageEntry(original_image_path=filename, detected_image_path=filename, description=description, car_count=car_count)
+            entry = ImageEntry(original_image_path=filename, detected_image_path=filename,
+                                description=description, car_count=car_count)
             db.session.add(entry)
             db.session.commit()
             return redirect(url_for('index'))
