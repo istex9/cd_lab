@@ -2,12 +2,14 @@ from flask import Flask, jsonify, request, render_template, redirect, url_for, s
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 import os
+import os.path as osp
 from ultralytics import YOLO
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from celery import Celery
 from sqlalchemy import ForeignKey
+
 
 def make_celery(app):
     celery = Celery(
@@ -30,11 +32,10 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
 app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
 celery = make_celery(app)
-
 db = SQLAlchemy(app)
 model = YOLO("yolov8x-worldv2.pt")
 
-    
+
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
@@ -47,7 +48,7 @@ class User(db.Model, UserMixin):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-    
+
 
 class ImageEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -60,12 +61,13 @@ class ImageEntry(db.Model):
 
 class ViewedEntry(db.Model):
     __tablename__ = 'viewed_entries'
-    user_id = db.Column(db.Integer, ForeignKey('user.id'), primary_key=True)
-    image_id = db.Column(db.Integer, ForeignKey('image_entry.id'), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), primary_key=True)
+    image_id = db.Column(db.Integer, db.ForeignKey('image_entry.id', ondelete='CASCADE'), primary_key=True)
     viewed = db.Column(db.Boolean, default=True)
 
-    user = db.relationship('User', backref=db.backref('viewed_entry_links', lazy='dynamic'))
-    image = db.relationship('ImageEntry', backref=db.backref('viewed_entry_links', lazy='dynamic'))
+    user = db.relationship('User', backref=db.backref('viewed_entry_links', lazy='dynamic', cascade='all, delete-orphan'))
+    image = db.relationship('ImageEntry', backref=db.backref('viewed_entry_links', lazy='dynamic', cascade='all, delete-orphan'))
+
 
 
 login_manager = LoginManager(app)
@@ -133,7 +135,7 @@ def logout():
 def admin_dashboard():
     if not current_user.is_admin:
         return 'Access denied', 403
-    
+
     unviewed_images = ImageEntry.query.filter(~ImageEntry.viewers.any(User.id == current_user.id)).all()
     viewed_images = current_user.viewed_images  # Már megtekintett képek lekérése
 
@@ -171,7 +173,7 @@ def upload():
             image.save(original_path)
             car_count = detect_cars(original_path, detected_path)
             entry = ImageEntry(original_image_path=filename, detected_image_path=filename,
-                description=description, car_count=car_count)
+                                description=description, car_count=car_count)
             db.session.add(entry)
             db.session.commit()
             return redirect(url_for('index'))
@@ -197,8 +199,13 @@ def mark_viewed(image_id):
 def delete_image(image_id):
     image_to_delete = ImageEntry.query.get(image_id)
     if image_to_delete:
-        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], image_to_delete.original_image_path))
-        os.remove(os.path.join(app.config['DETECTION_FOLDER'], image_to_delete.detected_image_path))
+        original_image_path = osp.join(app.config['UPLOAD_FOLDER'], image_to_delete.original_image_path)
+        detected_image_path = osp.join(app.config['DETECTION_FOLDER'], image_to_delete.detected_image_path)
+        # Töröld a képfájlokat, ha léteznek
+        if osp.exists(original_image_path):
+            os.remove(original_image_path)
+        if osp.exists(detected_image_path):
+            os.remove(detected_image_path)
         db.session.delete(image_to_delete)
         db.session.commit()
         return redirect(url_for('index'))
