@@ -53,6 +53,11 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "UP"}), 200
+
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
