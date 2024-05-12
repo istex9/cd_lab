@@ -1,9 +1,10 @@
 name: CD
 
-workflow_run:
-  workflows: ["Flask CI/CD Pipeline"]
-  types:
-    - completed
+on:
+  workflow_run:
+    workflows: ["Flask CI/CD Pipeline"]
+    types:
+      - completed
   workflow_dispatch:
 
 env:

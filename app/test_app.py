@@ -7,11 +7,17 @@ from app import app, db, User
 def client():
     app.config['TESTING'] = True
     app.config['WTF_CSRF_ENABLED'] = False
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
-    client = app.test_client()
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'  # Használj memória-alapú SQLite DB-t teszteléshez
 
     with app.app_context():
         db.create_all()
+        # Előzetes felhasználó létrehozása tesztelés céljából
+        user = User(username="testuser", is_admin=False)
+        user.set_password("testpass")
+        db.session.add(user)
+        db.session.commit()
+
+    client = app.test_client()
 
     yield client
 
@@ -30,20 +36,14 @@ def test_register(client):
 
 
 def test_login(client):
-    # Előzetes felhasználó létrehozása
-    user = User(username="testuser", is_admin=False)
-    user.set_password("testpass")
-    db.session.add(user)
-    db.session.commit()
-
     # Bejelentkezési kísérlet
     response = client.post('/login', data=dict(
         username="testuser",
         password="testpass"
     ), follow_redirects=True)
-    print(response.data)  # Kinyomtatja a válasz adatát, hogy láthassuk, mi hiányzik vagy mi téves
+    
     assert response.status_code == 200
-    assert b"testuser" in response.data
+    assert b"testuser" in response.data  # Ellenőrizzük, hogy a felhasználói név megjelenik-e a válaszban
 
 
 def test_logout(client):
