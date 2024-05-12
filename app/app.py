@@ -3,12 +3,11 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 import os
 from ultralytics import YOLO
-from flask_login import login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-
 from celery import Celery
+
 
 def make_celery(app):
     celery = Celery(
@@ -18,6 +17,7 @@ def make_celery(app):
     )
     celery.conf.update(app.config)
     return celery
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
@@ -34,6 +34,7 @@ celery = make_celery(app)
 db = SQLAlchemy(app)
 model = YOLO("yolov8x-worldv2.pt")
 
+
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
@@ -49,9 +50,11 @@ class User(db.Model, UserMixin):
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -77,6 +80,7 @@ def register():
         return redirect(url_for('login'))
     return render_template('register.html')
 
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -95,11 +99,13 @@ def login():
             return render_template('login.html', error='Invalid username or password')
     return render_template('login.html')
 
+
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('index'))
+
 
 @app.route('/admin_dashboard')
 @login_required
@@ -115,6 +121,7 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
 if not os.path.exists(app.config['DETECTION_FOLDER']):
     os.makedirs(app.config['DETECTION_FOLDER'])
 
+
 class ImageEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     original_image_path = db.Column(db.String(100), nullable=False)
@@ -123,14 +130,17 @@ class ImageEntry(db.Model):
     car_count = db.Column(db.Integer, nullable=False, default=0)
     viewed = db.Column(db.Boolean, default=False)  # Új mező a megtekintés állapotának nyomon követésére
 
+
 with app.app_context():
     db.create_all()
+
 
 @app.route('/')
 @login_required
 def index():
     images = ImageEntry.query.all()
     return render_template('index.html', images=images)
+
 
 @app.route('/upload', methods=['POST'])
 @login_required
@@ -150,6 +160,7 @@ def upload():
             return redirect(url_for('index'))
     return 'Failed to upload image'
 
+
 @app.route('/mark_viewed/<int:image_id>', methods=['POST'])
 @login_required
 def mark_viewed(image_id):
@@ -163,6 +174,7 @@ def mark_viewed(image_id):
         return jsonify({'success': True, 'message': 'Image marked as viewed'})
     return jsonify({'success': False, 'message': 'Image not found'}), 404
 
+
 @app.route('/delete/<int:image_id>', methods=['POST'])
 @login_required
 def delete_image(image_id):
@@ -175,12 +187,14 @@ def delete_image(image_id):
         return redirect(url_for('index'))
     return 'Image not found', 404
 
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     path = os.path.join(app.config['DETECTION_FOLDER'], filename)
     if os.path.exists(path):
         return send_from_directory(app.config['DETECTION_FOLDER'], filename)
     return 'File not found', 404
+
 
 @celery.task
 def detect_cars(original_image_path, detected_image_path):

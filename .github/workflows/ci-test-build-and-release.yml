@@ -33,7 +33,7 @@ jobs:
 
       - name: Test with pytest
         run: |
-          pytest /app/test_app.py
+          pytest /home/runner/work/cd_lab/cd_lab/app/test_app.py
 
       - name: Test with pytest ls
         run: |
