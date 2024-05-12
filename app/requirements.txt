@@ -3,3 +3,7 @@ Flask-Login
 Flask-SQLAlchemy
 Werkzeug
 ultralytics
+<<<<<<< Updated upstream
+=======
+celery
+>>>>>>> Stashed changes

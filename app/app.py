@@ -8,11 +8,28 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 
+from celery import Celery
+
+def make_celery(app):
+    celery = Celery(
+        app.import_name,
+        backend=app.config['CELERY_RESULT_BACKEND'],
+        broker=app.config['CELERY_BROKER_URL']
+    )
+    celery.conf.update(app.config)
+    return celery
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['DETECTION_FOLDER'] = 'runs/detect/predict/'
 app.config['SECRET_KEY'] = 'your_very_secret_key_here'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Flask app konfigurációja
+app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
+app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
+celery = make_celery(app)
 
 db = SQLAlchemy(app)
 model = YOLO("yolov8x-worldv2.pt")
@@ -159,6 +176,10 @@ def uploaded_file(filename):
         return send_from_directory(app.config['DETECTION_FOLDER'], filename)
     return 'File not found', 404
 
+<<<<<<< Updated upstream
+=======
+@celery.task
+>>>>>>> Stashed changes
 def detect_cars(original_image_path, detected_image_path):
     results = model(original_image_path, save_dir=detected_image_path, classes=2, save=True, exist_ok=True)
     names = model.names
