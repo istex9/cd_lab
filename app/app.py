@@ -163,7 +163,8 @@ def mark_viewed(image_id):
         return jsonify({'success': True, 'message': 'Image marked as viewed'})
     return jsonify({'success': False, 'message': 'Image not found'}), 404
 
-@app.route('/delete/<int:image_id>')
+@app.route('/delete/<int:image_id>', methods=['POST'])
+@login_required
 def delete_image(image_id):
     image_to_delete = ImageEntry.query.get(image_id)
     if image_to_delete:

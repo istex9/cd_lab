@@ -58,7 +58,7 @@
                 <div class="image-card">
                     <img src="{{ url_for('uploaded_file', filename=image.detected_image_path) }}" alt="Detected image">
                     <p>{{ image.description }} - {{ image.car_count }} autók detektálva</p>
-                    <button onclick="markViewed({{ image.id }});">Megtekintett</button>
+                    <button onclick="markViewed({{ image.id }});">Megtekintes</button>
                 </div>
             {% endfor %}
         </div>
