@@ -22,7 +22,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install flake8 pytest
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f app/requirements.txt ]; then pip install -r app/requirements.txt; fi
 
       - name: Lint with flake8
         run: |
@@ -33,11 +33,11 @@ jobs:
 
       - name: Test with pytest ls
         run: |
-          ls -l
+          pwd
 
       - name: Test with pytest
         run: |
-          pytest /home/runner/work/cd_lab/cd_lab/app/test_app.py
+          pytest app/test_app.py
 
 
 
