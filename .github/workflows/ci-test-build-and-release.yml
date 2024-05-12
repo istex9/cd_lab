@@ -41,7 +41,7 @@ jobs:
       - name: HTMLHint Check
         run: htmlhint 'app/templates/*.html'
 
- notify-success:
+  notify-success:
     name: Notify Static+Unit test Success
     needs: lint-and-test
     runs-on: ubuntu-latest
