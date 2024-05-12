@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from celery import Celery
-
+from sqlalchemy import ForeignKey
 
 def make_celery(app):
     celery = Celery(
@@ -34,9 +34,6 @@ celery = make_celery(app)
 db = SQLAlchemy(app)
 model = YOLO("yolov8x-worldv2.pt")
 
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship
     
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -51,6 +48,7 @@ class User(db.Model, UserMixin):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
     
+
 class ImageEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     original_image_path = db.Column(db.String(100), nullable=False)
@@ -58,6 +56,7 @@ class ImageEntry(db.Model):
     description = db.Column(db.String(300), nullable=False)
     car_count = db.Column(db.Integer, nullable=False, default=0)
     viewers = db.relationship('User', secondary='viewed_entries', back_populates='viewed_images')
+
 
 class ViewedEntry(db.Model):
     __tablename__ = 'viewed_entries'
@@ -140,13 +139,12 @@ def admin_dashboard():
 
     return render_template('admin_dashboard.html', unviewed_images=unviewed_images, viewed_images=viewed_images)
 
+
 # Ensure the upload and detection folders exist
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 if not os.path.exists(app.config['DETECTION_FOLDER']):
     os.makedirs(app.config['DETECTION_FOLDER'])
-
-
 
 
 with app.app_context():
@@ -173,7 +171,7 @@ def upload():
             image.save(original_path)
             car_count = detect_cars(original_path, detected_path)
             entry = ImageEntry(original_image_path=filename, detected_image_path=filename,
-                                description=description, car_count=car_count)
+                description=description, car_count=car_count)
             db.session.add(entry)
             db.session.commit()
             return redirect(url_for('index'))
@@ -185,7 +183,7 @@ def upload():
 def mark_viewed(image_id):
     if not current_user.is_admin:
         return jsonify({'success': False, 'message': 'Access denied'}), 403
-    
+
     image = ImageEntry.query.get(image_id)
     if image not in current_user.viewed_images:
         current_user.viewed_images.append(image)
@@ -223,6 +221,7 @@ def detect_cars(original_image_path, detected_image_path):
     #    count 'car' objects in the results
     count = results[0].boxes.cls.tolist().count(car_id)
     return count
+
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=5000, )
