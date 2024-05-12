@@ -176,10 +176,7 @@ def uploaded_file(filename):
         return send_from_directory(app.config['DETECTION_FOLDER'], filename)
     return 'File not found', 404
 
-<<<<<<< Updated upstream
-=======
 @celery.task
->>>>>>> Stashed changes
 def detect_cars(original_image_path, detected_image_path):
     results = model(original_image_path, save_dir=detected_image_path, classes=2, save=True, exist_ok=True)
     names = model.names
