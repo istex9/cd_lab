@@ -1,10 +1,9 @@
 name: CD
 
-on:
-  push:
-    branches:
-      - master
-      - main
+workflow_run:
+  workflows: ["Flask CI/CD Pipeline"]
+  types:
+    - completed
   workflow_dispatch:
 
 env:
